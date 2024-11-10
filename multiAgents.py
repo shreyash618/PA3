@@ -142,16 +142,6 @@ class MultiAgentSearchAgent(Agent):
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
 
-#things I changed in Medhasri's minimax function
-#1. the current score initialization! pacman has a double negative in front of infinity and the ghost is set to positive infiinty?!
-# pacman needs to be negative infinity
-# since the goal of the ghost is to MINIMIZE the max player's benefit, it should be set to positive infinity
-
-#2. depth shouldn't decrease for each function call, it should only decrease when we've finished a cycle
-# since we have multiple ghosts and only one pacman, decreasing depth at each call would mean we don't finish the function
-
-#3. syntax issue in ghost section compaing tempScore to currScore
-
 class MinimaxAgent(MultiAgentSearchAgent):
     """
     Your minimax agent (question 2)
@@ -187,32 +177,34 @@ class MinimaxAgent(MultiAgentSearchAgent):
         _, best_action = self.minimax_recursion(gameState, self.depth, 0)
         return best_action
     
-    def minimax_recursion(self, curGameState, depth, index):
+    def minimax_recursion(self, curGameState, currdepth, currIndex):
         # if no win, loss or legal actions not possible, base case!
-        if curGameState.isWin() or curGameState.isLose() or len(curGameState.getLegalActions(index))==0 or depth==0:
+        if curGameState.isWin() or curGameState.isLose() or len(curGameState.getLegalActions(currIndex))==0 or currdepth==0:
             return self.evaluationFunction(curGameState), None
         
-        if index==0:
-            currScore = float('-inf') #-float("-inf") #there are two negative signs which make this positive! #should be negative!
+        if currIndex==0:
+            currScore = float('-inf') 
             currAction = None
             
-            for action in curGameState.getLegalActions(index):
-                successorTemp = curGameState.generateSuccessor(index, action)
-                tempScore, _ = self.minimax_recursion(successorTemp, depth, 1)
+            for action in curGameState.getLegalActions(currIndex):
+                successorTemp = curGameState.generateSuccessor(currIndex, action)
+                tempScore, _ = self.minimax_recursion(successorTemp, currdepth, 1)
+
                 if tempScore > currScore:
                     currAction = action
                     currScore = tempScore
             return currScore, currAction
         else:
-            currScore = float('inf') #-float("-inf") #should be positive infinity
+            currScore = float('inf')
             currAction = None
 
-            nAgent = (index + 1) % (curGameState.getNumAgents())
-            for action in curGameState.getLegalActions(index):
-                successorTemp = curGameState.generateSuccessor(index, action)
-                newDepth = depth - 1 if nAgent == 0 else depth
-                tempScore, _ = self.minimax_recursion(successorTemp, newDepth, nAgent)
-                if tempScore < currScore: #flipped the sign (tempScore > currScore) #remember the goal of ghosts is MINIMIZE!
+            nextIndex = (currIndex + 1) % (curGameState.getNumAgents())
+            for action in curGameState.getLegalActions(currIndex):
+                successorTemp = curGameState.generateSuccessor(currIndex, action)
+                newDepth = currdepth - 1 if nextIndex == 0 else currdepth
+                tempScore, _ = self.minimax_recursion(successorTemp, newDepth, nextIndex)
+
+                if tempScore < currScore:
                     currAction = action
                     currScore = tempScore
             return currScore, currAction
@@ -267,7 +259,36 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        best_action, __ = self.expectimax(gameState, self.depth * gameState.getNumAgents(), 0, "")
+        return best_action
+
+    def expectimax(self, gameState, currDepth, currIndex, currAction):
+        if currDepth==0 or gameState.isLose() or gameState.isWin():
+            return currAction, self.evaluationFunction(gameState)
+        elif currIndex!=0:
+            currScore = 0
+
+            for a in gameState.getLegalActions(currIndex):
+                nextIndex = (currIndex + 1) % gameState.getNumAgents()
+                successorTemp = gameState.generateSuccessor(currIndex, a)
+                
+                _, tempAction = self.expectimax(successorTemp, currDepth-1, nextIndex, currAction)
+                currScore += tempAction * (1/len(gameState.getLegalActions(currIndex)))
+            return (currAction, currScore)
+        else:  
+            nextAction = tuple(("max", float('-inf')))
+            for a in gameState.getLegalActions(currIndex):
+                nextIndex = (currIndex + 1) % gameState.getNumAgents()
+                successorTemp = gameState.generateSuccessor(currIndex, a)
+                if currDepth != self.depth * gameState.getNumAgents():
+                    successor = self.expectimax(successorTemp, currDepth - 1, nextIndex, currAction)
+                else:
+                    successor = self.expectimax(gameState.generateSuccessor(currIndex, a),
+                                            currDepth - 1,nextIndex, a)
+                nextAction = max(nextAction,successor,key = lambda x:x[1])
+            return nextAction
+        
+        # util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState: GameState):
     """
