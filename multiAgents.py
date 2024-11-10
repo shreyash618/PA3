@@ -244,7 +244,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
                     index = 0
                 for action in gameState.getLegalActions(index):
                     successorState = gameState.generateSuccessor(index, action)
-                    nextDepth = depth + 1 if nextAgent == 0 else depth
+                    nextDepth = depth + 1 if index == 0 else depth
                     score = alphaBeta(successorState, index + 1, nextDepth, alpha, beta)
                     bestScore = min (score, bestScore)
                     beta = min(beta, bestScore)
