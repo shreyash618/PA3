@@ -227,33 +227,51 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         """
         Returns the minimax action using self.depth and self.evaluationFunction
         """
-        
-        if max_value: 
-            V= float('-inf')
-            for succcesor in gameState.generateSuccessor(index, action):
-                v = max (v, succcesor.getScore())
-
-        if min_value: 
-            V= float('-inf')
-            for succcesor in gameState.generateSuccessor(index, action):
-                v = max (v, succcesor.getScore())
-
-        best_score = float('-inf')
-        best_action = None
-
-        # Loop through Pacman's possible actions
-        for action in gameState.getLegalActions(0):  # Pacman has index 0
-            successor_state = gameState.generateSuccessor(0, action)
-            score, _ = self.minimax_recursion(successor_state, self.depth - 1, 1)
+        #defining the recursive alpha-beta function
+        #parameters we need to know: which player is playing? (0 for pacman, 1 or beyond for ghost), depth, alpha-value, beta-value, and obviously the game state
+       
+        def alphaBeta(gameState: GameState, index, depth, alpha, beta):
+            if (gameState.isWin() or gameState.isLose() or depth == self.depth): #base case #checking if the current state is a terminal node
+                return self.evaluationFunction(gameState)
             
-            # Update the best action based on the score
-            if score > best_score:
-                best_score = score
-                best_action = action
+            #else go to the recursive step
+            if index == 0: #meaning pacman is playing, so we use the maximizer function
+                bestScore = float('-inf')
+                for action in gameState.getLegalActions(index):
+                    successorState = gameState.generateSuccessor(index, action)
+                    score = alphaBeta (successorState, index + 1, depth, alpha, beta)
+                    bestScore = max (score, bestScore)
+                    alpha = max(alpha, bestScore)
+                    if beta <= alpha:
+                        break
+                return bestScore
+
+            elif index > 0: #meaning a ghost is playing, so we use the minimizer function
+                bestScore = float('inf')
+                if index == gameState.getNumAgents() - 1:
+                    index = 0
+                for action in gameState.getLegalActions(index):
+                    successorState = gameState.generateSuccessor(index, action)
+                    nextDepth = depth + 1 if nextAgent == 0 else depth
+                    score = alphaBeta(successorState, index + 1, nextDepth, alpha, beta)
+                    bestScore = min (score, bestScore)
+                    beta = min(beta, bestScore)
+                    if beta <= alpha: #prune if the beta value is less than the alpha value
+                        break
+                return bestScore
         
-        return best_action
+        bestAction = None
+        alpha, beta = float('-inf'), float('inf')
+        bestScore = float('-inf')
+        for action in gameState.getLegalActions(0):  # Pacman's turn at the root
+            successorState = gameState.generateSuccessor(0, action)
+            score = alphaBeta(successorState, 1, 0, alpha, beta)
+            if score > bestScore:
+                bestScore = score
+                bestAction = action
+            alpha = max(alpha, bestScore)
 
-
+        return bestAction
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
       Your expectimax agent (question 4)
@@ -277,7 +295,51 @@ def betterEvaluationFunction(currentGameState: GameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    #util.raiseNotDefined()
+    # Useful information you can extract from a GameState (pacman.py)
+    successorGameState = currentGameState.generatePacmanSuccessor(action)   #the succesor game state
+    newPos = successorGameState.getPacmanPosition() #the new position
+    newFood = successorGameState.getFood()  #the new food
+    newGhostStates = successorGameState.getGhostStates()    #the new ghost states
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]  #the new scared times
+    
+    # calculate the manhattan distance from the current position to the closest food item
+    # the net benefit/desirability of a food item is inversely proportional to the distance to it
+    # using list iteration
+
+    foodProximity = [util.manhattanDistance(newPos, food) for food in newFood.asList()]
+    closestFood =  10 / min(foodProximity) + 1 if foodProximity else 0
+
+    currentDistanceToGhost = min ([util.manhattanDistance(currentGameState.getPacmanPosition(), ghost) for ghost in currentGameState.getGhostPositions()])
+
+    penalty = 0
+
+    for ghost, scaredTimer in zip(newGhostStates, newScaredTimes):
+        distanceToGhost = util.manhattanDistance(newPos, ghost.getPosition())
+
+        #if the ghost isn't scared and the new position is close to the ghost,
+        # then pacman should apply a penalty to that position to get further from it
+        if (scaredTimer == 0):
+            if distanceToGhost <= 1:
+                penalty -= 500
+            elif distanceToGhost <= 2:
+                penalty -= 200
+            else:
+                penalty -= 10/distanceToGhost
+
+        #if the ghost is scared, pacman should try to get closer to the ghost and select the new position
+        if (scaredTimer > 0):
+            if (scaredTimer <= 2 and distanceToGhost >= 3):
+                penalty -= 500
+            if(distanceToGhost < currentDistanceToGhost):
+                penalty += 100
+            else:
+                    penalty += 10/distanceToGhost
+    
+    if action == 'Stop':
+        penalty -= 10
+    totalScore = closestFood + penalty + successorGameState.getScore()
+    return totalScore
 
 # Abbreviation
 better = betterEvaluationFunction
