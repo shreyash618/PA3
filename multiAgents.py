@@ -317,25 +317,22 @@ def betterEvaluationFunction(currentGameState: GameState):
     "*** YOUR CODE HERE ***"
     #util.raiseNotDefined()
     # Useful information you can extract from a GameState (pacman.py)
-    successorGameState = currentGameState.generatePacmanSuccessor(action)   #the succesor game state
-    newPos = successorGameState.getPacmanPosition() #the new position
-    newFood = successorGameState.getFood()  #the new food
-    newGhostStates = successorGameState.getGhostStates()    #the new ghost states
-    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]  #the new scared times
-    
-    # calculate the manhattan distance from the current position to the closest food item
-    # the net benefit/desirability of a food item is inversely proportional to the distance to it
-    # using list iteration
 
-    foodProximity = [util.manhattanDistance(newPos, food) for food in newFood.asList()]
+    position = currentGameState.getPacmanPosition() 
+    allFood = currentGameState.getFood()
+    ghostStates = currentGameState.getGhostStates()
+    scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+
+    foodProximity = [util.manhattanDistance(position, food) for food in allFood.asList()]
     closestFood =  10 / min(foodProximity) + 1 if foodProximity else 0
 
-    currentDistanceToGhost = min ([util.manhattanDistance(currentGameState.getPacmanPosition(), ghost) for ghost in currentGameState.getGhostPositions()])
+
+    distanceToGhost = min ([util.manhattanDistance(position, ghost) for ghost in currentGameState.getGhostPositions()])
 
     penalty = 0
 
-    for ghost, scaredTimer in zip(newGhostStates, newScaredTimes):
-        distanceToGhost = util.manhattanDistance(newPos, ghost.getPosition())
+    for ghost, scaredTimer in zip(ghostStates, scaredTimes):
+        distanceToGhost = util.manhattanDistance(position, ghost.getPosition())
 
         #if the ghost isn't scared and the new position is close to the ghost,
         # then pacman should apply a penalty to that position to get further from it
@@ -351,14 +348,10 @@ def betterEvaluationFunction(currentGameState: GameState):
         if (scaredTimer > 0):
             if (scaredTimer <= 2 and distanceToGhost >= 3):
                 penalty -= 500
-            if(distanceToGhost < currentDistanceToGhost):
-                penalty += 100
             else:
-                    penalty += 10/distanceToGhost
+                    penalty += 100/distanceToGhost
     
-    if action == 'Stop':
-        penalty -= 10
-    totalScore = closestFood + penalty + successorGameState.getScore()
+    totalScore = closestFood + penalty + currentGameState.getScore()
     return totalScore
 
 # Abbreviation
