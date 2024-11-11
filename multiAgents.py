@@ -223,33 +223,32 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         #parameters we need to know: which player is playing? (0 for pacman, 1 or beyond for ghost), depth, alpha-value, beta-value, and obviously the game state
        
         def alphaBeta(gameState: GameState, index, depth, alpha, beta):
-            if (gameState.isWin() or gameState.isLose() or depth == self.depth): #base case #checking if the current state is a terminal node
+            if (gameState.isWin() or gameState.isLose() or depth==self.depth): #gameState.isWin() or gameState.isLose() or  #base case #checking if the current state is a terminal node
                 return self.evaluationFunction(gameState)
-            
+            nextIndex = (index + 1) % gameState.getNumAgents()
+            nextDepth = depth + 1 if nextIndex == 0 else depth
+
             #else go to the recursive step
             if index == 0: #meaning pacman is playing, so we use the maximizer function
                 bestScore = float('-inf')
                 for action in gameState.getLegalActions(index):
                     successorState = gameState.generateSuccessor(index, action)
-                    score = alphaBeta (successorState, index + 1, depth, alpha, beta)
+                    score = alphaBeta (successorState, nextIndex, depth, alpha, beta)
                     bestScore = max (score, bestScore)
+                    if bestScore > beta:
+                        return bestScore
                     alpha = max(alpha, bestScore)
-                    if beta <= alpha:
-                        break
                 return bestScore
 
             elif index > 0: #meaning a ghost is playing, so we use the minimizer function
                 bestScore = float('inf')
-                if index == gameState.getNumAgents() - 1:
-                    index = 0
                 for action in gameState.getLegalActions(index):
                     successorState = gameState.generateSuccessor(index, action)
-                    nextDepth = depth + 1 if index == 0 else depth
-                    score = alphaBeta(successorState, index + 1, nextDepth, alpha, beta)
+                    score = alphaBeta(successorState, nextIndex, nextDepth, alpha, beta)
                     bestScore = min (score, bestScore)
+                    if bestScore < alpha:
+                        return bestScore
                     beta = min(beta, bestScore)
-                    if beta <= alpha: #prune if the beta value is less than the alpha value
-                        break
                 return bestScore
         
         bestAction = None
